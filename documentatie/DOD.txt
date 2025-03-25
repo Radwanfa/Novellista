@@ -1,0 +1,5 @@
+Definition of Done
+
+
+unit tests written & works
+geschreven volgen documentatie

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <crow.h>
+#include <sqlite3.h>
 
 int main()
 {
@@ -9,5 +10,7 @@ int main()
         return "Hello world";
     });
 
-    app.port(18080).run();
+    app
+    .port(18080)
+    .run();
 }
