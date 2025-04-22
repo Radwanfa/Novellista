@@ -5,9 +5,13 @@ node_modules
 .vercel
 .netlify
 .wrangler
-/.svelte-kit
-/build
-/dist
+/app/.svelte-kit
+/app/node_modules
+/app/build
+/app/dist
+/backend/models
+/backend/embeddings
+/backend/__pycache__
 
 # OS
 .DS_Store
@@ -20,5 +24,5 @@ Thumbs.db
 !.env.test
 
 # Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+/app/vite.config.js.timestamp-*
+/app/vite.config.ts.timestamp-*
