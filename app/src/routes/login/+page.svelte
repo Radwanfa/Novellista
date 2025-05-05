@@ -1,31 +1,59 @@
 <script lang="ts">
+	import { resolveRoute } from "$app/paths";
+
 	let loginType = $state(false);
 	let username = $state("");
 	let password = $state("");
 	let Rpassword = $state("");
+	let message = $state("")
+	let userID;
 
 	async function handle() {
-		let formdata = new FormData();
 		if (loginType) {
+			let formdata = new FormData();
 			formdata.append("username", username);
 			formdata.append("password", password);
 			formdata.append("Rpassword", Rpassword);
-			let response = fetch('http://127.0.0.1:5000/api/register', {
+			let response;
+			response = await fetch('http://127.0.0.1:5000/api/register', {
 				method: "POST",
 				body: formdata
-			});
-			let result = (await response).json()
-			alert(result);
+			})
+			.then((response) => response.json());
+			if (response.status == "fail") {
+				message = response.message;
+				return false;
+			}
+			userID = response.id;
+			console.log(userID);
 		} else {
+			let formdata = new FormData();
 			formdata.append("username", username);
 			formdata.append("password", password);
-			let response = fetch('http://127.0.0.1:5000/api/login', {
+			let response;
+			response = await fetch('http://127.0.0.1:5000/api/login', {
 				method: "POST",
 				body: formdata
-			});
-			let result = (await response).json()
-			alert(result);
+			})
+			.then((response) => response.json());
+			if (response.status == "fail") {
+				message = response.message;
+				return false;
+			}
+			userID = response.id;
+			console.log(userID);
 		}
+		message = "";
+		let formdata = new FormData();
+		formdata.append("userID", userID);
+		let response;
+		response = await fetch('http://127.0.0.1:5000/api/create_session', {
+			method: "POST",
+			body: formdata
+		});
+		let result = await response.json();
+		document.cookie = `session=${result.string}`;
+		window.location.href = "/"
 	}
 </script>
 
@@ -68,6 +96,10 @@
 						class="p-2 mt-6 bg-transparent text-white text-m rounded-[10px] border-1 border-white placeholder:text-white focus:outline-0"
 						bind:value={Rpassword}
 					/>
+				{/if}
+
+				{#if message != ""} 
+				<p class="text-red-700">{message}</p>
 				{/if}
 				<div class="flex items-center mt-4 text-m text-white">
 					<input type="checkbox" bind:checked={loginType} name="register" class="mr-1 mt-0" />

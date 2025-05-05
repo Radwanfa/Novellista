@@ -1,6 +1,9 @@
 from flask import Flask
 from flask import request
-import sqlite3
+import random
+import string
+import psycopg2
+import json
 from flask_cors import CORS
 import llama_cpp
 import time
@@ -13,10 +16,22 @@ from rich.console import Console
 
 c = Console()
 
-connection = sqlite3.connect('novellista.db')
-cursor = connection.cursor()
-
-
+conn = psycopg2.connect("postgresql://neondb_owner:npg_yZTjsEzBOU64@ep-wispy-dream-a4erkeq5-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require")
+cur = conn.cursor()
+cur.execute("CREATE TABLE IF NOT EXISTS users (" \
+"id SERIAL PRIMARY KEY," \
+"username varchar(255) NOT NULL," \
+"password varchar(255) NOT NULL" \
+")")
+cur.execute("CREATE TABLE IF NOT EXISTS sessions (" \
+"id SERIAL PRIMARY KEY," \
+"string varchar(255) NOT NULL," \
+"person_id int NOT NULL,"
+"CONSTRAINT fk_person" \
+"   FOREIGN KEY(person_id)" \
+"       REFERENCES users(id)" \
+")")
+conn.commit()
 app = Flask(__name__)
 CORS(app)
 @app.post("/api/gen")
@@ -82,9 +97,45 @@ def register():
     password = request.form.get("password")
     Rpassword = request.form.get("Rpassword")
 
-    if (password != Rpassword) {
-        return json
-    }
+    if (password != Rpassword):
+        return json.dumps({"status": "fail", "message": "wachtwoorden kloppen niet. Heb je een spelfout gemaakt?"})
+    cur.execute("INSERT INTO users (username, password) values (%s, %s);", (username, password))
+    cur.execute("SELECT lastval();")
+    result = cur.fetchone()
+    conn.commit()
+    return json.dumps({"status": "success", "id": result[0]})
+
+@app.post("/api/login")
+def login():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    cur.execute(f"SELECT id, password FROM users WHERE username=\'{username}\';")
+    result = cur.fetchone()
+    if result == None:
+        return json.dumps({"status": "fail", "message": "Geen gebruiker gevonden"})
+    elif password != result[1]:
+        return json.dumps({"status": "fail", "message": "Wachtwoorden kloppen niet"})
+    else:
+        return json.dumps({"status": "success", "id": result[0]})
+    
+@app.post("/api/create_session")
+def create_session():
+    userID = request.form.get("userID")
+    print(userID)
+    length = 50
+    randomString = ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+    cur.execute("INSERT INTO sessions (string, person_id) values (%s, %s)", (randomString, userID))
+    conn.commit()
+    return json.dumps({"status": "success", "string": randomString})
+
+@app.post("/api/get_session")
+def get_session():
+    session = request.form.get("session")
+    cur.execute(f"SELECT username FROM users INNER JOIN sessions ON sessions.person_id = users.id WHERE string = '{session}'")
+    result = cur.fetchone()
+    return json.dumps({"username": result[0]})
 
 
 def splitter(text):

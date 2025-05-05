@@ -1,19 +1,3 @@
-<script lang="ts">
-	let string: string = $state('text');
-
-	async function request() {
-		console.log(string);
-		let formdata = new FormData();
-		formdata.append('text', string);
-		let response = await fetch('http://127.0.0.1:5000/api/gen', {
-			method: 'POST',
-			body: formdata
-		});
-		let result = await response.text();
-		string += result;
-	}
-</script>
-
 <div class="flex flex-row">
 	<aside class="bg-amber-600 border-r-2 flex border-amber-200 h-screen w-1/4">&nbsp;</aside>
 	<div class="m-5 border-l-2 border-amber-300 w-full flex flex-col text-base">
@@ -30,3 +14,20 @@
 		</div>
 	</div>
 </div>
+<script lang="ts">
+	let string: string = $state('text');
+	let username;
+	let { data } = $props();
+	username = data.username;
+	async function request() {
+		console.log(string);
+		let formdata = new FormData();
+		formdata.append('text', string);
+		let response = await fetch('http://127.0.0.1:5000/api/gen', {
+			method: 'POST',
+			body: formdata
+		});
+		let result = await response.text();
+		string += result;
+	}
+</script>
