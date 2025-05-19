@@ -25,7 +25,9 @@
 				return false;
 			}
 			userID = response.id;
-			console.log(userID);
+			message = "";
+			document.cookie = `session=${response.string}`;
+			window.location.href = "/"
 		} else {
 			let formdata = new FormData();
 			formdata.append("username", username);
@@ -41,25 +43,18 @@
 				return false;
 			}
 			userID = response.id;
-			console.log(userID);
+			message = "";
+			document.cookie = `session=${response.string}`;
+			window.location.href = "/"
 		}
-		message = "";
-		let formdata = new FormData();
-		formdata.append("userID", userID);
-		let response;
-		response = await fetch('http://127.0.0.1:5000/api/create_session', {
-			method: "POST",
-			body: formdata
-		});
-		let result = await response.json();
-		document.cookie = `session=${result.string}`;
-		window.location.href = "/"
+		
 	}
 </script>
 
 <div
-	class="m-0 flex justify-center items-center h-screen bg-[url(/img/background-image.jpg)] bg-cover"
+	class="m-0 flex flex-col justify-center items-center h-screen bg-[url(/img/background-image.jpg)] bg-cover"
 >
+<h1 class="text-8xl text-white text-center absolute top-20">Novellista</h1>
 	<div
 		class="w-1/6 relative z-1 bg-[#ffffff1a] shadow-md border-1 border-solid border-[#fff] rounded-[10px] before:content-[''] before:absolute before:w-full before:h-full before:rounded-[10px] before:backdrop-blur-[5px] before:-z-1"
 	>
