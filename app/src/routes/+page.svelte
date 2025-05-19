@@ -51,6 +51,10 @@
 		let element = document.getElementById(id);
 		element!.style.background = "black";
 	}
+	function logout() {
+		document.cookie = 'session='
+		window.location.href = "/"
+	}
 
 	function create() {
 		string = '';
@@ -83,6 +87,10 @@
 		<div
 			class="w-full h-1/12 border-r-1 border-b-1 rounded-bl-4xl border-t-1 border-white flex justify-end bg-transparent backdrop-blur-sm"
 		>
+			<button
+				class="m-4 border-2 border-white rounded-4xl pr-6 pl-6 hover:bg-black text-cyan-50"
+				onclick={logout}>logout</button
+			>
 			<button
 				class="m-4 border-2 border-white rounded-4xl pr-6 pl-6 hover:bg-black text-cyan-50"
 				onclick={request}>Suggest</button
