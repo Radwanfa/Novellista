@@ -19,7 +19,20 @@ from bs4 import BeautifulSoup
 
 c = Console()
 
-conn = psycopg2.connect("postgresql://neondb_owner:npg_yZTjsEzBOU64@ep-wispy-dream-a4erkeq5-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require")
+llm = llama_cpp.Llama(
+    model_path="./models/mxbai-embed-large-v1-f16.gguf",
+    n_gpu_layers=-1,
+    embedding=True,
+    verbose=False
+)
+Mistral = llama_cpp.Llama(
+    model_path="./models/mistral-small-instruct-2409-q4_k_m.gguf",
+    verbose=False,
+    n_gpu_layers=25,
+    n_ctx=2048
+)
+
+conn = psycopg2.connect("postgresql://neondb_owner:npg_oGcui5al1YAb@ep-morning-bonus-aby7xgf9-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require")
 cur = conn.cursor()
 cur.execute("CREATE TABLE IF NOT EXISTS users (" \
 "id SERIAL PRIMARY KEY," \
@@ -51,14 +64,6 @@ def gen():
     soup = BeautifulSoup(string, "html.parser")
     text = soup.get_text()
     
-    llm = llama_cpp.Llama(
-        model_path="./models/mxbai-embed-large-v1-f16.gguf",
-        n_gpu_layers=-1,
-        embedding=True,
-        verbose=False
-    )
-
-
     if len(text) > 2500:
         documents = splitter(text.strip())
         embeddings = embed(documents, llm)
@@ -72,14 +77,6 @@ def gen():
         )
     else:
         search_query = text
-
-
-    Mistral = llama_cpp.Llama(
-        model_path="./models/mistral-small-instruct-2409-q4_k_m.gguf",
-        verbose=False,
-        n_gpu_layers=25,
-        n_ctx=2048
-    )
 
     if len(text) > 2500:
         template = """
