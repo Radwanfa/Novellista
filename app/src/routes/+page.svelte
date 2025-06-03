@@ -50,15 +50,32 @@
 		let response = await fetch('http://127.0.0.1:5000/api/gen', {
 			method: 'POST',
 			body: formdata
-		});
-		let result = await response.text();
-		const common = getCommonPrefix(result, string);
-		let newText = result.slice(common.length);
-		console.log(newText);
-		let text = `<br><br><div class=\"text-red-200\">${result}</div><br><br>`;
-		string += text;
-		pending = false;
+		})
+		.then((response) => {
+			const reader = response.body?.getReader();
+			return new ReadableStream({
+				start(controller) {
+					string += "<br><br><div class=\"text-red-200\">";
+					return pump();
+					function pump(): any {
+						return reader?.read().then(({ done, value }) => {
+							if (done) {
+								controller.close();
+								pending = false;
+								string += "</div><br><br>";
+								return;
+							}
+
+							let text = new TextDecoder().decode(value);
+							string += text;
+							return pump();
+						});
+					}
+				},
+			});
+		});	
 	}
+	
 
 	async function getStory() {
 		if (!event) return;
@@ -104,7 +121,7 @@
 	</aside>
 	<div class="m-5 border-l-2 border-white rounded-b-4xl w-full flex flex-col text-base">
 		<div
-			class="h-11/12 w-full text-xl text-white focus:outline-0 overflow-scroll"
+			class="h-11/12 w-full text-xl text-white focus:outline-0 overflow-scroll bg-blue-900/60"
 			bind:innerHTML={string}
 			contenteditable="true"
 		></div>
@@ -116,12 +133,12 @@
 				onclick={logout}>logout</button
 			>
 			{#if pending == true}
-				<Loader size="48" class="self-center text-white animate-spin"/>
+				<Loader size="48" class="self-center text-white animate-spin" />
 			{:else}
-			<button
-				class="m-4 border-2 border-white rounded-4xl pr-6 pl-6 hover:bg-black text-cyan-50"
-				onclick={request}>Suggest</button
-			>
+				<button
+					class="m-4 border-2 border-white rounded-4xl pr-6 pl-6 hover:bg-black text-cyan-50"
+					onclick={request}>Suggest</button
+				>
 			{/if}
 			<button
 				class="m-4 border-2 border-white rounded-4xl pr-6 pl-6 hover:bg-black text-cyan-50"

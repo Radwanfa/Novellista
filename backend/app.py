@@ -1,9 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response
 from flask import request
 import random
 import string
 import psycopg2
-import json
 from flask_cors import CORS
 import llama_cpp
 import time
@@ -20,19 +19,22 @@ from bs4 import BeautifulSoup
 c = Console()
 
 llm = llama_cpp.Llama(
-    model_path="./models/mxbai-embed-large-v1-f16.gguf",
+    model_path="/home/radwanfa/Documents/Novellista/backend/models/mxbai-embed-large-v1-f16.gguf",
     n_gpu_layers=-1,
     embedding=True,
     verbose=False
 )
 Mistral = llama_cpp.Llama(
-    model_path="./models/mistral-small-instruct-2409-q4_k_m.gguf",
+    model_path="/home/radwanfa/Documents/Novellista/backend/models/mistral-small-instruct-2409-q4_k_m.gguf",
     verbose=False,
-    n_gpu_layers=25,
+    n_gpu_layers=24,
     n_ctx=2048
 )
 
-conn = psycopg2.connect("postgresql://neondb_owner:npg_oGcui5al1YAb@ep-morning-bonus-aby7xgf9-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require")
+conn = psycopg2.connect("postgresql://neondb_owner:npg_oGcui5al1YAb@ep-morning-bonus-aby7xgf9-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require",  keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5)
 cur = conn.cursor()
 cur.execute("CREATE TABLE IF NOT EXISTS users (" \
 "id SERIAL PRIMARY KEY," \
@@ -80,11 +82,11 @@ def gen():
 
     if len(text) > 2500:
         template = """
-        you are a helpful assistant who writes a new paragraph inspired on the given information and your own input.
+        you are a helpful assistant who writes a follow-up inspired on the given information and your own input.
 
         {context}
 
-        Unfinished paragraph: {question}"""
+        input: {question}"""
 
         stream = Mistral.create_chat_completion(
             messages = [
@@ -93,16 +95,17 @@ def gen():
                     question = search_query
                 )}
             ],
-            stream=True
+            stream=True,
+            top_k=1,
+            repeat_penalty=2
         )
-        c.print(stream)
     else:
         template = """
-        you are a helpful assistant who writes a new paragraph inspired on the given information and your own input.
+        you are a helpful assistant who writes a follow-up inspired on the given information and your own input.
 
         {context}
 
-        Unfinished paragraph: {question}"""
+        input: {question}"""
 
         stream = Mistral.create_chat_completion(
             messages = [
@@ -111,13 +114,16 @@ def gen():
                     question = search_query
                 )}
             ],
-            stream=True
+            stream=True,
+            top_k=1,
+            repeat_penalty=2
         )
-        c.print(stream)
-    result = ""
-    for chunk in stream:
-        result += chunk["choices"][0]["delta"].get('content', '')
-    return result
+        def gen_resp(stream):
+            for chunk in stream:
+                yield chunk["choices"][0]["delta"].get('content', '')
+        return gen_resp(stream), 200
+   
+    
 
 
 @app.post("/api/register")
@@ -129,13 +135,13 @@ def register():
     hash = bcrypt.hashpw(password.encode('utf-8'), salt)
 
     if (password != Rpassword):
-        return jsonify({"status": "fail", "message": "wachtwoorden kloppen niet. Heb je een spelfout gemaakt?"})
+        return jsonify({"status": "fail", "message": "wachtwoorden kloppen niet. Heb je een spelfout gemaakt?"}), 403
     cur.execute("INSERT INTO users (username, password) values (%s, %s);", (username, Binary(hash)))
     cur.execute("SELECT lastval();")
     result = cur.fetchone()
     conn.commit()
     session = create_session(result[0])
-    return jsonify({"status": "success", "id": result[0], "string": session})
+    return jsonify({"status": "success", "id": result[0], "string": session}), 200
 
 @app.post("/api/login")
 def login():
@@ -144,21 +150,21 @@ def login():
 
     cur.execute(f"SELECT id, password FROM users WHERE username=\'{username}\';")
     result = cur.fetchone()
-    passwordhash = bcrypt.checkpw(password.encode('utf-8'),  bytes(result[1]))
     if result == None:
-        return jsonify({"status": "fail", "message": "Geen gebruiker gevonden"})
-    elif passwordhash == False:
-        return jsonify({"status": "fail", "message": "Wachtwoorden kloppen niet"})
+        return jsonify({"status": "fail", "message": "Geen gebruiker gevonden"}), 403
+    passwordhash = bcrypt.checkpw(password.encode('utf-8'),  bytes(result[1]))
+    if passwordhash == False:
+        return jsonify({"status": "fail", "message": "Wachtwoorden kloppen niet"}), 401
     else:
         session = create_session(result[0])
-        return jsonify({"status": "success", "id": result[0], "string": session})
+        return jsonify({"status": "success", "id": result[0], "string": session}), 200
 
 @app.post("/api/get_session")
 def get_session():
     session = request.form.get("session")
     cur.execute(f"SELECT users.id, username FROM users INNER JOIN sessions ON sessions.person_id = users.id WHERE string = '{session}'")
     result = cur.fetchone()
-    return jsonify({"id": result[0], "username": result[1]})
+    return jsonify({"id": result[0], "username": result[1]}), 200
 
 @app.post("/api/save_story")
 def save_story():
@@ -169,26 +175,26 @@ def save_story():
         cur.execute("SELECT lastval();")
         result = cur.fetchone()
         conn.commit()
-        return jsonify({"status": "success", "id": result[0]})
+        return jsonify({"status": "success", "id": result[0]}), 200
     else:
         id = request.form.get("id")
         cur.execute("UPDATE stories SET story = %s WHERE id = %s", (story, id))
         conn.commit()
-        return jsonify({"status": "success"})
+        return jsonify({"status": "success"}), 200
 
 @app.post("/api/get_stories")
 def get_stories():
     userID = request.headers.get("userId")
     cur.execute(f"SELECT id FROM stories WHERE person_id=\'{userID}\'")
     result = cur.fetchall()
-    return jsonify({"stories": result})
+    return jsonify({"stories": result}), 200
 
 @app.get("/api/get_story")
 def get_story():
     id = request.args.get("id")
     cur.execute(f"SELECT story FROM stories WHERE id=\'{id}\'")
     result = cur.fetchone()
-    return jsonify({"story": result[0]})
+    return jsonify({"story": result[0]}), 200
 
 def create_session(userID):
     length = 50
@@ -257,3 +263,4 @@ def store(embeddings):
     )
     c.print(operation_info)
     return client
+
